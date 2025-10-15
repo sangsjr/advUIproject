@@ -76,7 +76,8 @@
         <div class="hud" id="hud">
             <div>Health: <span id="health">3</span></div>
             <div>Score: <span id="score">0</span></div>
-            <div>Weapon: Machine Gun</div>
+            <div>Weapon: <span id="weapon">Pistol</span></div>
+            <div>Ammo: <span id="ammo">∞</span></div>
         </div>
         
         <div class="game-over" id="gameOver">
@@ -105,10 +106,23 @@
                 spawnInterval: 2000,
                 minDistanceFromPlayer: 100
             },
-            bullet: { 
-                radius: 4, 
-                speed: 600, 
-                fireRate: 200
+            weapons: {
+                pistol: {
+                    name: 'Pistol',
+                    fireRate: 300,
+                    ammo: -1, // -1 means infinite
+                    maxAmmo: -1,
+                    bulletSpeed: 600,
+                    bulletRadius: 4
+                },
+                machineGun: {
+                    name: 'Machine Gun',
+                    fireRate: 100,
+                    ammo: 50,
+                    maxAmmo: 50,
+                    bulletSpeed: 700,
+                    bulletRadius: 3
+                }
             },
             colors: {
                 background: '#16213e',
@@ -151,6 +165,13 @@
                 this.lastFireTime = 0;
                 this.invulnerable = false;
                 this.invulnerabilityStart = 0;
+                
+                // Weapon system
+                this.currentWeapon = 'pistol';
+                this.weapons = {
+                    pistol: { ...CONFIG.weapons.pistol },
+                    machineGun: { ...CONFIG.weapons.machineGun }
+                };
             }
 
             update(dt, input) {
@@ -176,15 +197,43 @@
                 if (this.invulnerable && Date.now() - this.invulnerabilityStart > CONFIG.player.invulnerabilityTime) {
                     this.invulnerable = false;
                 }
+
+                // Weapon switching
+                if (input.switchWeapon) {
+                    this.switchWeapon();
+                }
+            }
+
+            switchWeapon() {
+                const weapons = Object.keys(this.weapons);
+                const currentIndex = weapons.indexOf(this.currentWeapon);
+                const nextIndex = (currentIndex + 1) % weapons.length;
+                this.currentWeapon = weapons[nextIndex];
             }
 
             tryFire(mouseX, mouseY) {
+                const weapon = this.weapons[this.currentWeapon];
                 const now = Date.now();
-                if (now - this.lastFireTime < CONFIG.bullet.fireRate) return null;
-
+                
+                // Check fire rate
+                if (now - this.lastFireTime < weapon.fireRate) return null;
+                
+                // Check ammo (if not infinite)
+                if (weapon.ammo === 0) return null;
+                
                 const dir = normalize(mouseX - this.x, mouseY - this.y);
                 this.lastFireTime = now;
-                return new Bullet(this.x, this.y, dir.x, dir.y);
+                
+                // Consume ammo if not infinite
+                if (weapon.ammo > 0) {
+                    weapon.ammo--;
+                }
+                
+                return new Bullet(this.x, this.y, dir.x, dir.y, weapon.bulletSpeed, weapon.bulletRadius);
+            }
+
+            getCurrentWeapon() {
+                return this.weapons[this.currentWeapon];
             }
 
             takeDamage() {
@@ -209,6 +258,13 @@
                 this.y = CONFIG.player.startY;
                 this.health = CONFIG.player.maxHealth;
                 this.invulnerable = false;
+                
+                // Reset weapons
+                this.currentWeapon = 'pistol';
+                this.weapons = {
+                    pistol: { ...CONFIG.weapons.pistol },
+                    machineGun: { ...CONFIG.weapons.machineGun }
+                };
             }
         }
 
@@ -259,13 +315,13 @@
         }
 
         class Bullet {
-            constructor(x, y, dirX, dirY) {
+            constructor(x, y, dirX, dirY, speed = 600, radius = 4) {
                 this.x = x;
                 this.y = y;
                 this.dirX = dirX;
                 this.dirY = dirY;
-                this.radius = CONFIG.bullet.radius;
-                this.speed = CONFIG.bullet.speed;
+                this.radius = radius;
+                this.speed = speed;
                 this.active = true;
             }
 
@@ -344,6 +400,7 @@
                     down: this.keys.has('KeyS') || this.keys.has('ArrowDown'),
                     fire: this.mousePressed,
                     restart: this.keys.has('Enter'),
+                    switchWeapon: this.keys.has('KeyR'),
                     mouseX: this.mousePos.x,
                     mouseY: this.mousePos.y
                 };
@@ -466,6 +523,15 @@
             updateHUD() {
                 document.getElementById('health').textContent = this.player.health;
                 document.getElementById('score').textContent = this.score;
+                
+                const currentWeapon = this.player.getCurrentWeapon();
+                document.getElementById('weapon').textContent = currentWeapon.name;
+                
+                if (currentWeapon.ammo === -1) {
+                    document.getElementById('ammo').textContent = '∞';
+                } else {
+                    document.getElementById('ammo').textContent = currentWeapon.ammo;
+                }
             }
 
             restart() {
