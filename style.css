@@ -1,0 +1,108 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background-color: #222;
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    overflow: hidden;
+}
+
+#gameContainer {
+    position: relative;
+    border: 2px solid #444;
+    background-color: #111;
+}
+
+#gameCanvas {
+    display: block;
+    background-color: #333;
+    cursor: crosshair;
+}
+
+#hud {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 10;
+    font-size: 18px;
+    font-weight: bold;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+#hud > div {
+    margin-bottom: 5px;
+}
+
+#healthDisplay {
+    color: #ff4444;
+}
+
+#weaponDisplay {
+    color: #44ff44;
+}
+
+#debugInfo {
+    color: #ffff44;
+    font-size: 14px;
+}
+
+#gameOverScreen {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: rgba(0, 0, 0, 0.9);
+    padding: 40px;
+    border-radius: 10px;
+    text-align: center;
+    z-index: 20;
+}
+
+#gameOverScreen h2 {
+    color: #ff4444;
+    margin-bottom: 20px;
+    font-size: 32px;
+}
+
+#restartButton {
+    background-color: #44ff44;
+    color: #000;
+    border: none;
+    padding: 15px 30px;
+    font-size: 18px;
+    font-weight: bold;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-bottom: 10px;
+}
+
+#restartButton:hover {
+    background-color: #66ff66;
+}
+
+.hidden {
+    display: none;
+}
+
+/* Responsive canvas scaling */
+@media (max-width: 1250px) {
+    #gameCanvas {
+        width: 100vw;
+        height: auto;
+    }
+}
+
+@media (max-height: 850px) {
+    #gameCanvas {
+        height: 100vh;
+        width: auto;
+    }
+}

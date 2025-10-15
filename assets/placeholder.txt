@@ -1,0 +1,10 @@
+This directory contains placeholder image files for the 2D Shooter MVP.
+
+Image files that should be placed here:
+- player.png - Player sprite (fallback: red circle)
+- enemy.png - Enemy sprite (fallback: teal triangle)
+- bullet.png - Bullet sprite (fallback: yellow circle)
+- bg.png - Background texture (fallback: solid color)
+- ui_weapon_mg.png - Machine gun UI icon (fallback: text)
+
+These files are optional - the game will render geometric shapes as fallbacks if images are missing.
