@@ -3,24 +3,133 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>2D Shooter MVP</title>
-    <link rel="stylesheet" href="style.css">
+    <title>2D Shooter</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+        
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        #gameCanvas {
+            border: 2px solid #333;
+            background: #111;
+        }
+        
+        #hud {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            font-size: 16px;
+            z-index: 10;
+        }
+        
+        #health {
+            margin-bottom: 10px;
+        }
+        
+        #weaponBar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .weapon-slot {
+            padding: 5px 10px;
+            border: 2px solid #666;
+            background: rgba(0,0,0,0.7);
+            border-radius: 4px;
+        }
+        
+        .weapon-slot.active {
+            border-color: #0f0;
+            background: rgba(0,255,0,0.2);
+        }
+        
+        #gameOverScreen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.9);
+            color: white;
+            padding: 40px;
+            border-radius: 10px;
+            text-align: center;
+            z-index: 20;
+        }
+        
+        #gameOverScreen.hidden {
+            display: none;
+        }
+        
+        #restartButton {
+            padding: 10px 20px;
+            font-size: 16px;
+            background: #333;
+            color: white;
+            border: 2px solid #666;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        
+        #restartButton:hover {
+            background: #555;
+        }
+        
+        #toast {
+            position: absolute;
+            top: 100px;
+            left: 20px;
+            background: rgba(255,255,0,0.9);
+            color: black;
+            padding: 10px 15px;
+            border-radius: 4px;
+            z-index: 15;
+            display: none;
+        }
+    </style>
 </head>
 <body>
     <div id="gameContainer">
         <canvas id="gameCanvas" width="1200" height="800"></canvas>
+        
         <div id="hud">
-            <div id="healthDisplay">Health: ♥♥♥</div>
-            <div id="weaponDisplay">Machine Gun: ∞</div>
-            <div id="debugInfo"></div>
+            <div id="health">HP: <span id="healthHearts">♥♥♥</span></div>
+            <div id="weaponBar">
+                <div class="weapon-slot active" id="pistol-slot">
+                    <div>Pistol</div>
+                    <div>∞</div>
+                </div>
+                <div class="weapon-slot" id="machinegun-slot">
+                    <div>Machine Gun</div>
+                    <div>50 placeholder</div>
+                </div>
+            </div>
         </div>
+        
+        <div id="toast"></div>
+        
         <div id="gameOverScreen" class="hidden">
             <h2>Game Over</h2>
-            <button id="restartButton">Restart Game</button>
-            <p>Or press Enter to restart</p>
+            <p>Press Enter or click Restart to play again</p>
+            <button id="restartButton">Restart</button>
         </div>
     </div>
     
-    <script type="module" src="main.js"></script>
+    <script type="module" src="js/main.js"></script>
 </body>
 </html>
