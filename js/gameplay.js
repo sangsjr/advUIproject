@@ -83,6 +83,19 @@ export class Player extends Entity {
         this.iframeTimer = 0;
         this.flashTimer = 0;
         this.weapon = null;
+
+        // Circular animation setup
+        this.anim = {
+            frames: 6,             // Total number of frames in animation
+            frame: 0,              // Current frame index
+            timer: 0,
+            frameDuration: 0.03,   // Frame duration (seconds)
+            idleFrame: 0           // Display first frame when idle
+        };
+
+        this.isMoving = false;
+        this._prevX = x;
+        this._prevY = y;
     }
     
     update(deltaTime, inputManager, bounds) {
@@ -114,45 +127,73 @@ export class Player extends Entity {
         if (this.weapon) {
             this.weapon.update(deltaTime);
         }
+
+
+        // Update animation
+        const movedDist = Math.abs(this.x - this._prevX) + Math.abs(this.y - this._prevY);
+        this.isMoving = movedDist > 0.1; // Check if player is moving
+
+        if (this.isMoving) {
+            this.anim.timer += deltaTime;
+            if (this.anim.timer >= this.anim.frameDuration) {
+                this.anim.timer = 0;
+                this.anim.frame = (this.anim.frame + 1) % this.anim.frames;
+            }
+        } else {
+            this.anim.frame = this.anim.idleFrame;
+            this.anim.timer = 0;
+        }
+
+        this._prevX = this.x;
+        this._prevY = this.y;
     }
     
     render(ctx, imageLoader = null, mouseX = 0, mouseY = 0) {
         ctx.save();
-        
-        // Calculate rotation angle towards mouse
-        const angle = Math.atan2(mouseY - this.y, mouseX - this.x);
-        
-        // Try to use sprite first
+
         const playerSprite = imageLoader?.getImage('player');
-        if (playerSprite) {
-            // Translate to center
-            ctx.translate(this.x, this.y);
-            ctx.rotate(angle);
-            
-            // Apply flash effect if taking damage
-            if (this.flashTimer > 0) {
-                ctx.globalAlpha = 0.5;
-                ctx.filter = 'brightness(2)';
-            }
-            
-            // Draw sprite with size = 2 * radius
-            const size = this.radius * 2;
-            ctx.drawImage(playerSprite, -size/2, -size/2, size, size);
-        } else {
-            // Fallback to geometry rendering
-            if (this.flashTimer > 0) {
-                ctx.fillStyle = '#FFFFFF';
-            } else {
-                ctx.fillStyle = '#00FF00';
-            }
-            
+        if (!playerSprite) {
+            // Fallback: Replace with circular.
+            ctx.fillStyle = '#00FF00';
             ctx.beginPath();
             ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
             ctx.fill();
+            ctx.restore();
+            return;
         }
-        
+
+        // Calculate rotation angle towards mouse
+        const angle = Math.atan2(mouseY - this.y, mouseX - this.x);
+        ctx.translate(this.x, this.y);
+        ctx.rotate(angle);
+
+        // Calculate source position in sprite sheet
+        const fw = playerSprite.width / this.anim.frames;
+        const fh = playerSprite.height;
+        const sx = this.anim.frame * fw;
+        const sy = 0;
+
+        // Set size
+        const scale = 4; // Size
+        const drawW = fw * scale;
+        const drawH = fh * scale;
+
+        // Apply flash effect if invulnerable
+        if (this.flashTimer > 0) {
+            ctx.globalAlpha = 0.6;
+            ctx.filter = 'brightness(1.8)';
+        }
+
+        ctx.drawImage(
+            playerSprite,
+            sx, sy, fw, fh,              // Source position in sprite sheet
+            -drawW / 2, -drawH / 2,      // Draw position (center)
+            drawW, drawH                 // Draw size
+        );
+
         ctx.restore();
     }
+
     
     takeDamage(damage) {
         if (this.iframeTimer > 0) return false;

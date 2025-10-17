@@ -1,7 +1,0 @@
-<svg width="256" height="256" xmlns="http://www.w3.org/2000/svg">
-  <rect width="256" height="256" fill="#1a1a1a"/>
-  <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
-    <rect width="32" height="32" fill="none" stroke="#333333" stroke-width="0.5"/>
-  </pattern>
-  <rect width="256" height="256" fill="url(#grid)"/>
-</svg>

@@ -138,7 +138,7 @@ class Game {
     
     async loadImages() {
         const imageMap = {
-            'player': 'player.svg',
+            'player': 'player.png',
             'bullet_player': 'bullet_player.svg',
             'bullet_shooter': 'bullet_shooter.svg',
             'assassin': 'assassin.svg',
@@ -147,7 +147,7 @@ class Game {
             'ui_weapon_pistol': 'ui_weapon_pistol.svg',
             'ui_weapon_mg': 'ui_weapon_mg.svg',
             'ui_heart': 'ui_heart.svg',
-            'bg': 'bg.svg'
+            'bg': 'bg.png'
         };
         
         try {
@@ -516,9 +516,14 @@ class Game {
     
     render() {
         // Clear canvas
-        this.ctx.fillStyle = '#111111';
-        this.ctx.fillRect(0, 0, ARENA_WIDTH, ARENA_HEIGHT);
-        
+        const bgImage = this.imageLoader.getImage('bg');
+        if (bgImage) {
+            this.ctx.drawImage(bgImage, 0, 0, ARENA_WIDTH, ARENA_HEIGHT);
+        } else {
+            this.ctx.fillStyle = '#111111';
+            this.ctx.fillRect(0, 0, ARENA_WIDTH, ARENA_HEIGHT);
+        }
+
         // Draw arena border
         this.ctx.strokeStyle = '#333333';
         this.ctx.lineWidth = 4;
