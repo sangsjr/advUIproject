@@ -13,7 +13,7 @@ const SHOOTER_SPREAD_ANGLE = 4; // degrees
 const SHOOTER_BULLET_SPEED = 400; // pt/s
 const SHOOTER_BULLET_RADIUS = 4; // pt
 const SHOOTER_BULLET_LIFETIME = 2.5; // seconds
-const TANK_SPEED = 120; // pt/s
+const TANK_SPEED = 50; // pt/s
 const TANK_RADIUS = 25; // pt
 const TANK_HP = 3;
 const TANK_CONTACT_COOLDOWN = 0.7; // seconds
@@ -174,7 +174,7 @@ export class Player extends Entity {
         const sy = 0;
 
         // Set size
-        const scale = 4; // Size
+        const scale = 5; // Size
         const drawW = fw * scale;
         const drawH = fh * scale;
 
@@ -240,13 +240,66 @@ export class Enemy extends Entity {
         this.maxHp = hp;
         this.damage = 1;
         this.color = '#FF0000'; // Default red color
+
+        // Initialize hit animation state
+        this.hit = {
+            active: false,
+            timer: 0,
+            duration: 0.25,
+            frame: 0,
+            frameCount: 4,
+            frameDuration: 0.06
+        };
+
+        // Initialize dying state
+        this.isDying = false;
+        this.deathTimer = 0;
+        this.deathDuration = 0.3; // Match the duration of hit animation
     }
     
     update(deltaTime, player, bounds) {
         // Call parent Entity update to apply velocity to position
         super.update(deltaTime);
         // Override in subclasses for specific behavior
+
+        // Update hit animation
+        if (this.hit.active) {
+            this.hit.timer += deltaTime;
+
+            // Update frame if within duration
+            if (this.hit.timer < this.hit.duration) {
+                const frameIndex = Math.floor(this.hit.timer / this.hit.frameDuration);
+                this.hit.frame = Math.min(frameIndex, this.hit.frameCount - 1);
+            } else {
+                this.hit.active = false; // Reset animation
+            }
+        }
+
+        if (this.isDying) {
+            this.deathTimer += deltaTime;
+            if (this.deathTimer >= this.deathDuration) {
+                this.alive = false;
+            }
+        }
     }
+
+    takeDamage(damage) {
+        this.hp -= damage;
+
+        // Display hit animation
+        if (this.hit) {
+            this.hit.active = true;
+            this.hit.timer = 0;
+            this.hit.frame = 0;
+        }
+
+        if (this.hp <= 0 && !this.isDying) {
+            this.hp = 0;
+            this.isDying = true;
+            this.deathTimer = 0;
+        }
+    }
+
     
     render(ctx, imageLoader = null) {
         ctx.save();
@@ -281,6 +334,23 @@ export class Assassin extends Enemy {
     constructor(x, y) {
         super(x, y, ASSASSIN_RADIUS, 1);
         this.speed = ASSASSIN_SPEED;
+
+        // Circular animation setup
+        this.anim = {
+            frame: 0,
+            timer: 0,
+            frameCount: 4,
+            frameDuration: 0.15
+        };
+
+        // Death animation setup
+        this.deathAnim = {
+            frame: 0,
+            frameCount: 4,
+            frameDuration: 0.08 // 4*0.08=0.32s
+        };
+        this.deathDuration = this.deathAnim.frameCount * this.deathAnim.frameDuration;
+
     }
     
     update(deltaTime, player, bounds) {
@@ -299,18 +369,75 @@ export class Assassin extends Enemy {
         
         // Call parent update to apply velocity
         super.update(deltaTime, player, bounds);
+
+        // 如果在死亡流程，推进死亡帧
+        if (this.isDying) {
+            this.vx = 0; this.vy = 0;
+
+            const idx = Math.floor(this.deathTimer / this.deathAnim.frameDuration);
+            this.deathAnim.frame = Math.min(idx, this.deathAnim.frameCount - 1);
+        }
         
         // Keep within bounds
         this.x = Utils.clamp(this.x, this.radius, bounds.width - this.radius);
         this.y = Utils.clamp(this.y, this.radius, bounds.height - this.radius);
+
+        // Update animation frame
+        this.anim.timer += deltaTime;
+        if (this.anim.timer >= this.anim.frameDuration) {
+            this.anim.timer = 0;
+            this.anim.frame = (this.anim.frame + 1) % this.anim.frameCount;
+        }
     }
     
-    render(ctx) {
+    render(ctx, imageLoader = null) {
         ctx.save();
-        ctx.fillStyle = this.color || '#FF0000';
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-        ctx.fill();
+
+        if (this.isDying) {
+            // 绘制死亡动画
+            const sprite = imageLoader?.getImage('assassin_death');
+            if (sprite) {
+            const frames = this.deathAnim.frameCount;
+            const fw = (sprite.width / frames) | 0;
+            const fh = sprite.height | 0;
+            const sx = this.deathAnim.frame * fw;
+            const sy = 0;
+            const scale = 3; // 和生前大小一致
+            const dw = fw * scale;
+            const dh = fh * scale;
+            ctx.drawImage(sprite, sx, sy, fw, fh, Math.round(this.x - dw/2), Math.round(this.y - dh/2), dw, dh);
+            } else {
+            // 没有贴图就简单画个渐隐圆（可省略）
+            ctx.globalAlpha = 0.5;
+            ctx.fillStyle = '#FF0000';
+            ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2); ctx.fill();
+            }
+            ctx.restore();
+            return;
+        }
+
+        // ======= 正常行走动画（你已有的逻辑）=======
+        const sprite = imageLoader?.getImage('assassin');
+        if (!sprite) {
+            ctx.fillStyle = '#FF0000';
+            ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2); ctx.fill();
+            ctx.restore(); return;
+        }
+
+        const fw = sprite.width / this.anim.frameCount;
+        const fh = sprite.height;
+        const sx = fw * this.anim.frame;
+        const sy = 0;
+
+        const angle = Math.atan2(this.vy, this.vx);
+        ctx.translate(this.x, this.y);
+        ctx.rotate(angle + Math.PI / 2);
+
+        const scale = 3;
+        const dw = fw * scale;
+        const dh = fh * scale;
+        ctx.drawImage(sprite, sx, sy, fw, fh, -dw/2, -dh/2, dw, dh);
+
         ctx.restore();
     }
 }
@@ -325,6 +452,22 @@ export class Shooter extends Enemy {
         this.isMoving = true;
         this.centerX = 0; // Will be set when bounds are available
         this.centerY = 0;
+
+        this.anim = {
+            frame: 0,
+            timer: 0,
+            frameCount: 5,
+            frameDuration: 0.12
+        };
+
+        // Towards：-1=left, +1=right
+        this.facing = 1;
+
+        // hitted animation
+        this.hit.frameCount = 4;
+        this.hit.frameDuration = 0.06;
+        this.hit.duration = this.hit.frameCount * this.hit.frameDuration; // 播完一遍
+
     }
     
     update(deltaTime, player, bounds, projectiles) {
@@ -372,6 +515,17 @@ export class Shooter extends Enemy {
         // Keep in bounds
         this.x = Utils.clamp(this.x, this.radius, bounds.width - this.radius);
         this.y = Utils.clamp(this.y, this.radius, bounds.height - this.radius);
+
+        // Update facing direction
+        this.facing = (player && player.x < this.x) ? -1 : 1;
+
+        // Update animation frame
+        this.anim.timer += deltaTime;
+        if (this.anim.timer >= this.anim.frameDuration) {
+            this.anim.timer = 0;
+            this.anim.frame = (this.anim.frame + 1) % this.anim.frameCount;
+        }
+
     }
     
     fireAtPlayer(player, projectiles) {
@@ -403,35 +557,53 @@ export class Shooter extends Enemy {
     
     render(ctx, imageLoader = null, player = null) {
         ctx.save();
-        
-        // Calculate rotation angle towards player or based on velocity
-        let angle = 0;
-        if (player) {
-            angle = Math.atan2(player.y - this.y, player.x - this.x);
-        } else {
-            angle = Math.atan2(this.vy, this.vx);
-        }
-        
-        // Try to use sprite first
-        const shooterSprite = imageLoader?.getImage('shooter');
-        if (shooterSprite) {
-            // Translate to center and rotate
-            ctx.translate(this.x, this.y);
-            ctx.rotate(angle);
-            
-            // Draw sprite with size = 2 * radius
-            const size = this.radius * 2;
-            ctx.drawImage(shooterSprite, -size/2, -size/2, size, size);
-        } else {
-            // Fallback to geometry rendering
+
+        const facingLeft = (this.facing < 0);
+
+        const useHit = this.hit.active;
+
+        let baseKey = facingLeft ? 'shooter_left' : 'shooter_right';
+        let hitKey  = facingLeft ? 'shooter_hit_left' : 'shooter_hit_right';
+        const sprite = imageLoader?.getImage(useHit ? hitKey : baseKey);
+
+        if (!sprite) {
             ctx.fillStyle = '#FF8800';
             ctx.beginPath();
             ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
             ctx.fill();
+            ctx.restore();
+            return;
         }
-        
+
+        const frames = useHit ? this.hit.frameCount : this.anim.frameCount;
+        const frameIndex = useHit ? this.hit.frame : this.anim.frame;
+
+        const fw = (sprite.width / frames) | 0;
+        const fh = sprite.height | 0;
+        const sx = frameIndex * fw;
+        const sy = 0;
+
+        const scale = 4; // Size
+        const dw = fw * scale;
+        const dh = fh * scale;
+        const dx = Math.round(this.x - dw / 2);
+        const dy = Math.round(this.y - dh / 2);
+
+        if (useHit) {
+            ctx.globalAlpha = 0.95;
+            ctx.filter = 'brightness(1.2)';
+        }
+
+        ctx.drawImage(sprite, sx, sy, fw, fh, dx, dy, dw, dh);
+
+        if (useHit) {
+            ctx.filter = 'none';
+            ctx.globalAlpha = 1.0;
+        }
+
         ctx.restore();
-    }
+        }
+
 }
 
 // Tank enemy
@@ -443,6 +615,21 @@ export class Tank extends Enemy {
         this.flashTimer = 0;
         this.isFlashing = false;
         this.lastContactTime = 0;
+
+        this.anim = {
+            frame: 0,
+            timer: 0,
+            frameCount: 6,
+            frameDuration: 0.2
+        };
+
+        this.deathAnim = {
+            frame: 0,
+            frameCount: 8,
+            frameDuration: 0.08 // 8*0.08=0.64s
+        };
+        this.deathDuration = this.deathAnim.frameCount * this.deathAnim.frameDuration;
+
     }
     
     update(deltaTime, player, bounds) {
@@ -470,10 +657,23 @@ export class Tank extends Enemy {
         }
         
         super.update(deltaTime, player, bounds);
+
+        if (this.isDying) {
+            this.vx = 0; this.vy = 0;
+            const idx = Math.floor(this.deathTimer / this.deathAnim.frameDuration);
+            this.deathAnim.frame = Math.min(idx, this.deathAnim.frameCount - 1);
+        }
         
         // Keep in bounds
         this.x = Utils.clamp(this.x, this.radius, bounds.width - this.radius);
         this.y = Utils.clamp(this.y, this.radius, bounds.height - this.radius);
+        
+        // Update animation frame
+        this.anim.timer += deltaTime;
+        if (this.anim.timer >= this.anim.frameDuration) {
+            this.anim.timer = 0;
+            this.anim.frame = (this.anim.frame + 1) % this.anim.frameCount;
+        }
         
         // Check for contact damage
         if (this.contactCooldown <= 0 && player.canTakeDamage()) {
@@ -508,21 +708,59 @@ export class Tank extends Enemy {
         this.flashTimer = TANK_FLASH_DURATION;
     }
     
-    render(ctx) {
+    render(ctx, imageLoader = null) {
         ctx.save();
-        
-        // Flash white when hit, otherwise dark red
-        if (this.isFlashing) {
-            ctx.fillStyle = '#FFFFFF';
-        } else {
-            ctx.fillStyle = '#880000';
+
+        if (this.isDying) {
+            const sprite = imageLoader?.getImage('tank_death');
+            if (sprite) {
+                const frames = this.deathAnim.frameCount;
+                const fw = (sprite.width / frames) | 0;
+                const fh = sprite.height | 0;
+                const sx = this.deathAnim.frame * fw;
+                const sy = 0;
+                const scale = 3.5;
+                const dw = fw * scale;
+                const dh = fh * scale;
+                ctx.drawImage(sprite, sx, sy, fw, fh, Math.round(this.x - dw/2), Math.round(this.y - dh/2), dw, dh);
+            } else {
+                ctx.globalAlpha = 0.5;
+                ctx.fillStyle = '#880000';
+                ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2); ctx.fill();
+            }
+            ctx.restore();
+            return;
         }
-        
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-        ctx.fill();
+
+        const sprite = imageLoader?.getImage('tank');
+        if (!sprite) {
+            ctx.fillStyle = this.isFlashing ? '#FFFFFF' : '#880000';
+            ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2); ctx.fill();
+            ctx.restore(); return;
+        }
+
+        const fw = sprite.width / this.anim.frameCount;
+        const fh = sprite.height;
+        const sx = this.anim.frame * fw;
+        const sy = 0;
+
+        const angle = Math.atan2(this.vy, this.vx);
+        ctx.translate(this.x, this.y);
+        ctx.rotate(angle + Math.PI / 2);
+
+        const scale = 3.5;
+        const dw = fw * scale;
+        const dh = fh * scale;
+
+        if (this.isFlashing) {
+            ctx.globalAlpha = 0.6;
+            ctx.filter = 'brightness(1.8)';
+        }
+
+        ctx.drawImage(sprite, sx, sy, fw, fh, -dw/2, -dh/2, dw, dh);
         ctx.restore();
-    }
+        }
+
 }
 
 // Base Weapon class
