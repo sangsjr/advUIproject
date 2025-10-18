@@ -465,3 +465,29 @@ export class VoiceProvider {
         }
     }
 }
+
+// SOUND MANAGER
+export class SoundManager {
+    constructor() {
+        this.sounds = {};
+    }
+
+    load(name, path, volume = 0.5) {
+        const audio = new Audio(path);
+        audio.volume = volume;
+        this.sounds[name] = audio;
+    }
+
+    play(name) {
+        const sound = this.sounds[name];
+        if (sound) {
+            // cloneNode 防止上一个播放被打断
+            const clone = sound.cloneNode(true);
+            clone.volume = sound.volume;
+            clone.play();
+        } else {
+            console.warn('Sound not found:', name);
+        }
+    }
+}
+

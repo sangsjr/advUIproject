@@ -6,7 +6,7 @@ const MIN_FPS = 55;
 const ENEMY_SPAWN_INTERVAL = 2.0; // seconds
 const SPAWN_SAFETY_DISTANCE = 150; // pt
 
-import { EventBus, InputManager, KeyboardMouseProvider, GestureProvider, VoiceProvider, CollisionSystem, Utils, ImageLoader } from './core.js';
+import { EventBus, InputManager, KeyboardMouseProvider, GestureProvider, VoiceProvider, CollisionSystem, Utils, ImageLoader, SoundManager } from './core.js';
 import { Player, ENEMY_REGISTRY, WEAPON_REGISTRY, Projectile } from './gameplay.js';
 
 // Game States
@@ -53,6 +53,7 @@ class Game {
         this.inputManager = new InputManager();
         this.eventBus = new EventBus();
         this.imageLoader = new ImageLoader();
+        this.soundManager = new SoundManager();
         
         // Game objects
         this.player = null;
@@ -86,6 +87,14 @@ class Game {
     
     async init() {
         console.log('Initializing game...');
+
+        // Load Sounds
+        this.soundManager.load('hurt_enemy1', 'assets/sounds/hurt_enemy1.ogg', 0.6);
+        this.soundManager.load('hurt_enemy2', 'assets/sounds/hurt_enemy2.ogg', 0.6);
+        this.soundManager.load('hurt_enemy3', 'assets/sounds/hurt_enemy3.ogg', 0.6);
+        this.soundManager.load('hurt_player', 'assets/sounds/hurt_player.ogg', 0.7);
+        this.soundManager.load('shoot_pistol', 'assets/sounds/shoot_pistol.ogg', 0.5);
+
         
         // Get canvas and context
         this.canvas = document.getElementById('gameCanvas');
@@ -495,9 +504,17 @@ class Game {
             if (projectile.owner === 'player') {
                 this.enemies.forEach(enemy => {
                     if (CollisionSystem.checkCircleCollision(projectile, enemy)) {
+                        const prevHp = enemy.hp;
                         enemy.takeDamage(projectile.damage);
                         projectile.alive = false;
-                        
+
+                        // === 敌人受伤但没死，播放击中音效 ===
+                        if (prevHp > enemy.hp && enemy.isAlive() && projectile.owner === 'player') {
+                            if (window.game && window.game.soundManager) {
+                                window.game.soundManager.play('shoot_pistol');
+                            }
+                        }
+
                         if (!enemy.isAlive()) {
                             this.killCount++;
                         }

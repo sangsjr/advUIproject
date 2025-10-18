@@ -197,21 +197,24 @@ export class Player extends Entity {
     
     takeDamage(damage) {
         if (this.iframeTimer > 0) return false;
-        
-        // Check if creator mode is active (passed from game instance)
+
         if (this.creatorMode) {
-            // In creator mode, don't take damage but still show flash effect
             this.iframeTimer = PLAYER_IFRAME_DURATION;
-            this.flashTimer = 0.1; // Brief white flash
+            this.flashTimer = 0.1;
             return true;
         }
-        
+
         super.takeDamage(damage);
         this.iframeTimer = PLAYER_IFRAME_DURATION;
-        this.flashTimer = 0.1; // Brief white flash
-        
+        this.flashTimer = 0.1;
+
+        if (window.game && window.game.soundManager) {
+            window.game.soundManager.play('hurt_player');
+        }
+
         return true;
     }
+
     
     canTakeDamage() {
         return this.iframeTimer <= 0;
@@ -284,22 +287,32 @@ export class Enemy extends Entity {
     }
 
     takeDamage(damage) {
+        const wasAlive = this.alive;
+        const prevHp = this.hp;
         this.hp -= damage;
 
-        // Display hit animation
         if (this.hit) {
             this.hit.active = true;
             this.hit.timer = 0;
             this.hit.frame = 0;
         }
 
+        // === 敌人死亡 ===
         if (this.hp <= 0 && !this.isDying) {
             this.hp = 0;
             this.isDying = true;
             this.deathTimer = 0;
+
+            // 播放死亡音效
+            if (window.game && window.game.soundManager) {
+                let soundKey = 'hurt_enemy1';
+                if (this.constructor.name === 'Tank') soundKey = 'hurt_enemy1';
+                else if (this.constructor.name === 'Assassin') soundKey = 'hurt_enemy2';
+                else if (this.constructor.name === 'Shooter') soundKey = 'hurt_enemy3';
+                window.game.soundManager.play(soundKey);
+            }
         }
     }
-
     
     render(ctx, imageLoader = null) {
         ctx.save();
@@ -370,7 +383,6 @@ export class Assassin extends Enemy {
         // Call parent update to apply velocity
         super.update(deltaTime, player, bounds);
 
-        // 如果在死亡流程，推进死亡帧
         if (this.isDying) {
             this.vx = 0; this.vy = 0;
 
